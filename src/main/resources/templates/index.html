@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduManage Pro - Quản Lý Sinh Viên</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Alpine.js 3 for ultra-smooth reactive DOM without full rerenders -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+</head>
+<body data-theme="dark">
+
+    <div class="app-container" x-data="appData()" x-init="init()" x-cloak>
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-icon">
+                    <!-- Dashboard Grid SVG -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>EduManage</h1>
+                    <span>Portal Giáo Viên</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Nghiệp vụ</div>
+                
+                <div class="nav-item" :class="{ 'active': currentTab === 'dashboard' }" @click="switchTab('dashboard')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                        <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                    </svg>
+                    <span>Tổng quan</span>
+                </div>
+
+                <div class="nav-item" :class="{ 'active': currentTab === 'students' }" @click="switchTab('students')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>Quản lý Sinh viên</span>
+                </div>
+
+                <div class="nav-item" :class="{ 'active': currentTab === 'grades' }" @click="switchTab('grades')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="8" r="7"></circle>
+                        <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+                    </svg>
+                    <span>Bảng điểm môn học</span>
+                </div>
+
+                <div class="nav-item" :class="{ 'active': currentTab === 'conduct' }" @click="switchTab('conduct')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    <span>Điểm rèn luyện</span>
+                </div>
+
+                <div class="nav-item" :class="{ 'active': currentTab === 'schedule' }" @click="switchTab('schedule')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span>Thời khóa biểu</span>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile-badge">
+                    <div class="user-avatar" x-text="(currentUser.username || 'U')[0].toUpperCase()">U</div>
+                    <div class="user-meta">
+                        <div class="user-name" x-text="currentUser.username || 'Người dùng'">Đang tải...</div>
+                        <span class="user-role-pill" x-text="userRole" :style="userRole === 'ADMIN' ? 'background: rgba(239, 68, 68, 0.15); color: #ef4444;' : 'background: rgba(79, 70, 229, 0.15); color: #4f46e5;'">GVCN</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN WRAPPER -->
+        <div class="main-wrapper">
+            <!-- TOP NAVBAR -->
+            <header class="top-navbar">
+                <div class="page-title">
+                    <h2 x-text="tabTitles[currentTab]?.title">Tổng quan Hệ Thống</h2>
+                    <p x-text="tabTitles[currentTab]?.subtitle">Theo dõi chỉ số và tiến độ học tập của sinh viên</p>
+                </div>
+
+                <div class="top-actions">
+                    <!-- Class selector (for teacher homeroom or admin) -->
+                    <select class="input-control" x-model="selectedClassId" @change="onClassChange()" style="font-weight: 600; min-width: 170px;">
+                        <template x-for="c in classes" :key="c.id">
+                            <option :value="c.id" x-text="c.classCode + ' - ' + c.name"></option>
+                        </template>
+                    </select>
+
+                    <!-- Theme toggle button -->
+                    <button class="btn-icon" @click="toggleTheme()" title="Đổi giao diện Sáng / Tối">
+                        <!-- Sun Icon for Dark Mode -->
+                        <svg x-show="theme === 'dark'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <!-- Moon Icon for Light Mode -->
+                        <svg x-show="theme === 'light'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Logout button -->
+                    <button class="btn btn-secondary btn-sm" @click="logout()" style="color: var(--text-muted);">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        <span>Thoát</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- CONTENT BODY -->
+            <main class="content-body">
+                <!-- ========================================== -->
+                <!-- TAB 1: DASHBOARD                           -->
+                <!-- ========================================== -->
+                <section x-show="currentTab === 'dashboard'" x-transition:enter.duration.150ms class="tab-content">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-label">Tổng Sinh Viên Lớp</div>
+                                <div class="stat-value" x-text="stats.studentCount">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon" style="color: #10b981; background: rgba(16,185,129,0.15);">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                    <polyline points="17 6 23 6 23 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-label">GPA Trung Bình Lớp</div>
+                                <div class="stat-value" x-text="stats.gpaAverage">0.00</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon" style="color: #f59e0b; background: rgba(245,158,11,0.15);">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-label">Điểm Rèn Luyện TB</div>
+                                <div class="stat-value" x-text="stats.conductAverage">0 / 100</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon" style="color: #8b5cf6; background: rgba(139,92,246,0.15);">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-label">Môn Học Kỳ Này</div>
+                                <div class="stat-value" x-text="stats.courseCount + ' Môn'">2 Môn</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CHARTS GRID -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; margin-top: 24px;">
+                        <div class="panel">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <h3>Phổ Điểm Môn Học (Học Kỳ 1)</h3>
+                                    <span>Phân phối điểm chữ A, B, C, D, F</span>
+                                </div>
+                            </div>
+                            <div style="padding: 20px; height: 260px; position: relative;">
+                                <canvas id="gradeDistributionChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="panel">
+                            <div class="panel-header">
+                                <div class="panel-title">
+                                    <h3>Tỷ Lệ Xếp Loại Rèn Luyện</h3>
+                                    <span>Tỷ lệ % Xuất Sắc, Tốt, Khá, TB</span>
+                                </div>
+                            </div>
+                            <div style="padding: 20px; height: 260px; position: relative;">
+                                <canvas id="conductPieChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RECENT STUDENTS PANEL -->
+                    <div class="panel" style="margin-top: 24px;">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <h3>Sinh Viên Tiêu Biểu Trong Lớp</h3>
+                                <span>Danh sách sinh viên nổi bật có điểm rèn luyện và GPA cao</span>
+                            </div>
+                            <button class="btn btn-secondary btn-sm" @click="switchTab('students')">Xem tất cả</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>MSSV</th>
+                                        <th>Họ và Tên</th>
+                                        <th>Ngày Sinh</th>
+                                        <th>Email</th>
+                                        <th>Trạng Thái</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- SKELETON PLACEHOLDER -->
+                                    <template x-if="tableLoading">
+                                        <template x-for="i in 3" :key="i">
+                                            <tr>
+                                                <td><span class="skeleton" style="width: 80px;"></span></td>
+                                                <td><span class="skeleton" style="width: 140px;"></span></td>
+                                                <td><span class="skeleton" style="width: 90px;"></span></td>
+                                                <td><span class="skeleton" style="width: 160px;"></span></td>
+                                                <td><span class="skeleton skeleton-badge"></span></td>
+                                            </tr>
+                                        </template>
+                                    </template>
+
+                                    <!-- DATA ROWS -->
+                                    <template x-if="!tableLoading && recentStudents.length > 0">
+                                        <template x-for="s in recentStudents" :key="s.id">
+                                            <tr>
+                                                <td><strong style="color: var(--primary); font-family: var(--font-mono);" x-text="s.studentCode"></strong></td>
+                                                <td><strong x-text="s.fullName"></strong></td>
+                                                <td x-text="s.dob"></td>
+                                                <td x-text="s.email || '-'"></td>
+                                                <td>
+                                                    <span class="badge badge-success">
+                                                        <span class="badge-dot"></span>
+                                                        <span x-text="s.status"></span>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </template>
+
+                                    <!-- EMPTY STATE -->
+                                    <template x-if="!tableLoading && recentStudents.length === 0">
+                                        <tr>
+                                            <td colspan="5" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                                                Chưa có sinh viên nào trong lớp này.
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================== -->
+                <!-- TAB 2: QUẢN LÝ SINH VIÊN                   -->
+                <!-- ========================================== -->
+                <section x-show="currentTab === 'students'" x-transition:enter.duration.150ms class="tab-content">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <h3>Danh Sách Sinh Viên Thuộc Lớp</h3>
+                                <span x-text="currentClass ? 'Lớp ' + currentClass.classCode + ' - ' + currentClass.name : 'Lớp được phân công'"></span>
+                            </div>
+                            <div class="panel-tools">
+                                <div class="search-box">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    </svg>
+                                    <input type="text" class="input-control" placeholder="Tìm theo tên hoặc MSSV..." x-model="searchQuery">
+                                </div>
+                                <button class="btn btn-primary" @click="openAddStudentModal()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="9" cy="7" r="4"></circle>
+                                        <line x1="20" y1="8" x2="20" y2="14"></line>
+                                        <line x1="23" y1="11" x2="17" y2="11"></line>
+                                    </svg>
+                                    <span>Thêm Sinh Viên</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>MSSV</th>
+                                        <th>Họ và Tên</th>
+                                        <th>Lớp</th>
+                                        <th>Ngày Sinh</th>
+                                        <th>Email</th>
+                                        <th>Số Điện Thoại</th>
+                                        <th>Trạng Thái</th>
+                                        <th style="text-align: right;">Thao Tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- SKELETON PLACEHOLDERS -->
+                                    <template x-if="tableLoading">
+                                        <template x-for="i in 5" :key="i">
+                                            <tr>
+                                                <td><span class="skeleton" style="width: 70px;"></span></td>
+                                                <td><span class="skeleton" style="width: 140px;"></span></td>
+                                                <td><span class="skeleton skeleton-badge"></span></td>
+                                                <td><span class="skeleton" style="width: 85px;"></span></td>
+                                                <td><span class="skeleton" style="width: 130px;"></span></td>
+                                                <td><span class="skeleton" style="width: 95px;"></span></td>
+                                                <td><span class="skeleton skeleton-badge"></span></td>
+                                                <td style="text-align: right;"><span class="skeleton" style="width: 110px;"></span></td>
+                                            </tr>
+                                        </template>
+                                    </template>
+
+                                    <!-- REAL DATA ROWS -->
+                                    <template x-if="!tableLoading && filteredStudents.length > 0">
+                                        <template x-for="s in filteredStudents" :key="s.id">
+                                            <tr>
+                                                <td><strong style="color: var(--primary); font-family: var(--font-mono);" x-text="s.studentCode"></strong></td>
+                                                <td><strong x-text="s.fullName"></strong></td>
+                                                <td><span class="badge badge-info" x-text="s.classCode"></span></td>
+                                                <td x-text="s.dob"></td>
+                                                <td x-text="s.email || '-'"></td>
+                                                <td x-text="s.phone || '-'"></td>
+                                                <td>
+                                                    <span class="badge badge-success">
+                                                        <span class="badge-dot"></span>
+                                                        <span x-text="s.status"></span>
+                                                    </span>
+                                                </td>
+                                                <td style="text-align: right; white-space: nowrap;">
+                                                    <button class="btn btn-secondary btn-sm" @click="openEditStudentModal(s)">
+                                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                                        </svg>
+                                                        <span>Sửa</span>
+                                                    </button>
+                                                    <button class="btn btn-danger btn-sm" @click="deleteStudent(s)" style="margin-left: 6px;">
+                                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                        </svg>
+                                                        <span>Xóa</span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </template>
+
+                                    <!-- EMPTY STATE -->
+                                    <template x-if="!tableLoading && filteredStudents.length === 0">
+                                        <tr>
+                                            <td colspan="8">
+                                                <div class="empty-state">
+                                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                        <circle cx="11" cy="11" r="8"></circle>
+                                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                                    </svg>
+                                                    <h4>Không tìm thấy sinh viên nào</h4>
+                                                    <p>Hãy thử từ khóa tìm kiếm khác hoặc bấm "Thêm Sinh Viên".</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================== -->
+                <!-- TAB 3: BẢNG ĐIỂM                           -->
+                <!-- ========================================== -->
+                <section x-show="currentTab === 'grades'" x-transition:enter.duration.150ms class="tab-content">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <h3>Bảng Điểm Môn Học & Tính Điểm Linh Hoạt</h3>
+                                <span>Tính toán tự động theo trọng số môn học</span>
+                            </div>
+                            <div class="panel-tools">
+                                <select class="input-control" x-model="selectedCourseId" @change="onCourseChange()" style="font-weight: 600;">
+                                    <template x-for="cr in courses" :key="cr.id">
+                                        <option :value="cr.id" x-text="cr.code + ' - ' + cr.name"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>MSSV</th>
+                                        <th>Họ và Tên</th>
+                                        <th>Chuyên cần</th>
+                                        <th>Bài tập</th>
+                                        <th>Giữa kỳ</th>
+                                        <th>Cuối kỳ</th>
+                                        <th>Tổng kết (10)</th>
+                                        <th>Hệ 4</th>
+                                        <th>Điểm Chữ</th>
+                                        <th style="text-align: right;">Nhập Điểm</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- SKELETON PLACEHOLDERS -->
+                                    <template x-if="tableLoading">
+                                        <template x-for="i in 5" :key="i">
+                                            <tr>
+                                                <td><span class="skeleton" style="width: 75px;"></span></td>
+                                                <td><span class="skeleton" style="width: 140px;"></span></td>
+                                                <td><span class="skeleton" style="width: 45px;"></span></td>
+                                                <td><span class="skeleton" style="width: 45px;"></span></td>
+                                                <td><span class="skeleton" style="width: 45px;"></span></td>
+                                                <td><span class="skeleton" style="width: 45px;"></span></td>
+                                                <td><span class="skeleton" style="width: 50px;"></span></td>
+                                                <td><span class="skeleton" style="width: 45px;"></span></td>
+                                                <td><span class="skeleton skeleton-badge"></span></td>
+                                                <td style="text-align: right;"><span class="skeleton" style="width: 90px;"></span></td>
+                                            </tr>
+                                        </template>
+                                    </template>
+
+                                    <!-- REAL DATA ROWS -->
+                                    <template x-if="!tableLoading && gradeRows.length > 0">
+                                        <template x-for="row in gradeRows" :key="row.student.id">
+                                            <tr>
+                                                <td><strong style="color: var(--primary); font-family: var(--font-mono);" x-text="row.student.studentCode"></strong></td>
+                                                <td><strong x-text="row.student.fullName"></strong></td>
+                                                <td x-text="row.grade && row.grade.attendanceScore !== undefined ? row.grade.attendanceScore : '-'"></td>
+                                                <td x-text="row.grade && row.grade.assignmentScore !== undefined ? row.grade.assignmentScore : '-'"></td>
+                                                <td x-text="row.grade && row.grade.midtermScore !== undefined ? row.grade.midtermScore : '-'"></td>
+                                                <td x-text="row.grade && row.grade.finalScore !== undefined ? row.grade.finalScore : '-'"></td>
+                                                <td><strong style="color: var(--primary); font-size: 15px;" x-text="row.grade && row.grade.totalScore10 !== undefined ? row.grade.totalScore10 : '-'"></strong></td>
+                                                <td><strong x-text="row.grade && row.grade.totalScore4 !== undefined ? row.grade.totalScore4 : '-'"></strong></td>
+                                                <td>
+                                                    <span class="badge" :class="getGradeBadgeClass(row.grade?.letterGrade)">
+                                                        <span class="badge-dot"></span>
+                                                        <span x-text="row.grade?.letterGrade || '-'"></span>
+                                                    </span>
+                                                </td>
+                                                <td style="text-align: right;">
+                                                    <button class="btn btn-primary btn-sm" @click="openGradeModal(row.student, row.grade)">
+                                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <path d="M12 20h9"></path>
+                                                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                                                        </svg>
+                                                        <span>Nhập Điểm</span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </template>
+
+                                    <!-- EMPTY STATE -->
+                                    <template x-if="!tableLoading && gradeRows.length === 0">
+                                        <tr>
+                                            <td colspan="10" style="text-align: center; padding: 36px; color: var(--text-muted);">
+                                                Chưa có sinh viên nào trong lớp này.
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================== -->
+                <!-- TAB 4: ĐIỂM RÈN LUYỆN                      -->
+                <!-- ========================================== -->
+                <section x-show="currentTab === 'conduct'" x-transition:enter.duration.150ms class="tab-content">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <h3>Đánh Giá Điểm Rèn Luyện Theo Kỳ</h3>
+                                <span>Học kỳ 1 năm học 2024-2025</span>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>MSSV</th>
+                                        <th>Họ và Tên</th>
+                                        <th>Điểm Đánh Giá (0-100)</th>
+                                        <th>Xếp Loại</th>
+                                        <th>Ghi Chú của GVCN</th>
+                                        <th>Trạng Thái</th>
+                                        <th style="text-align: right;">Chấm Điểm</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- SKELETON PLACEHOLDERS -->
+                                    <template x-if="tableLoading">
+                                        <template x-for="i in 5" :key="i">
+                                            <tr>
+                                                <td><span class="skeleton" style="width: 75px;"></span></td>
+                                                <td><span class="skeleton" style="width: 140px;"></span></td>
+                                                <td><span class="skeleton" style="width: 50px;"></span></td>
+                                                <td><span class="skeleton skeleton-badge"></span></td>
+                                                <td><span class="skeleton" style="width: 150px;"></span></td>
+                                                <td><span class="skeleton skeleton-badge"></span></td>
+                                                <td style="text-align: right;"><span class="skeleton" style="width: 90px;"></span></td>
+                                            </tr>
+                                        </template>
+                                    </template>
+
+                                    <!-- REAL DATA ROWS -->
+                                    <template x-if="!tableLoading && conductRows.length > 0">
+                                        <template x-for="row in conductRows" :key="row.student.id">
+                                            <tr>
+                                                <td><strong style="color: var(--primary); font-family: var(--font-mono);" x-text="row.student.studentCode"></strong></td>
+                                                <td><strong x-text="row.student.fullName"></strong></td>
+                                                <td><strong style="font-size: 15px;" x-text="row.conduct && row.conduct.score !== undefined ? row.conduct.score : '-'"></strong></td>
+                                                <td>
+                                                    <span class="badge" :class="getConductBadgeClass(row.conduct?.classification)">
+                                                        <span class="badge-dot"></span>
+                                                        <span x-text="getConductLabel(row.conduct?.classification)"></span>
+                                                    </span>
+                                                </td>
+                                                <td x-text="row.conduct && row.conduct.teacherNotes ? row.conduct.teacherNotes : '-'"></td>
+                                                <td>
+                                                    <span class="badge badge-info">
+                                                        <span class="badge-dot"></span>
+                                                        <span x-text="row.conduct?.status || 'DRAFT'"></span>
+                                                    </span>
+                                                </td>
+                                                <td style="text-align: right;">
+                                                    <button class="btn btn-primary btn-sm" @click="openConductModal(row.student, row.conduct)">
+                                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                                        </svg>
+                                                        <span>Đánh Giá</span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </template>
+
+                                    <!-- EMPTY STATE -->
+                                    <template x-if="!tableLoading && conductRows.length === 0">
+                                        <tr>
+                                            <td colspan="7" style="text-align: center; padding: 36px; color: var(--text-muted);">
+                                                Chưa có dữ liệu sinh viên trong lớp.
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================== -->
+                <!-- TAB 5: THỜI KHÓA BIỂU                      -->
+                <!-- ========================================== -->
+                <section x-show="currentTab === 'schedule'" x-transition:enter.duration.150ms class="tab-content">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <h3>Thời Khóa Biểu Của Lớp</h3>
+                                <span>Lịch học cố định theo tuần (Học kỳ 1)</span>
+                            </div>
+                        </div>
+
+                        <!-- TIMETABLE SKELETON -->
+                        <div class="timetable-grid" x-show="tableLoading">
+                            <div class="timetable-card" style="opacity: 0.7;">
+                                <div class="skeleton" style="width: 100px; height: 18px;"></div>
+                                <div class="skeleton" style="width: 180px; height: 20px;"></div>
+                                <div class="skeleton" style="width: 140px;"></div>
+                            </div>
+                            <div class="timetable-card" style="opacity: 0.7;">
+                                <div class="skeleton" style="width: 100px; height: 18px;"></div>
+                                <div class="skeleton" style="width: 180px; height: 20px;"></div>
+                                <div class="skeleton" style="width: 140px;"></div>
+                            </div>
+                        </div>
+
+                        <!-- TIMETABLE REAL CARDS -->
+                        <div class="timetable-grid" x-show="!tableLoading && schedules.length > 0">
+                            <template x-for="item in schedules" :key="item.id">
+                                <div class="timetable-card">
+                                    <div class="timetable-header">
+                                        <span class="timetable-day" x-text="getDayName(item.dayOfWeek)"></span>
+                                        <span class="timetable-room">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px;">
+                                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                                <circle cx="12" cy="10" r="3"></circle>
+                                            </svg>
+                                            <span x-text="item.room"></span>
+                                        </span>
+                                    </div>
+                                    <div class="timetable-subject" x-text="item.courseCode + ' - ' + item.courseName"></div>
+                                    <div class="timetable-meta">
+                                        <div>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px;">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <polyline points="12 6 12 12 16 14"></polyline>
+                                            </svg>
+                                            <span x-text="'Tiết ' + item.startPeriod + ' - ' + (item.startPeriod + item.periodCount - 1) + ' (' + item.periodCount + ' tiết)'"></span>
+                                        </div>
+                                        <div>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px;">
+                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="12" cy="7" r="4"></circle>
+                                            </svg>
+                                            <span x-text="'GV: ' + (item.lecturerName || 'Bộ môn')"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- EMPTY STATE -->
+                        <div class="empty-state" x-show="!tableLoading && schedules.length === 0">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            <h4>Chưa có thời khóa biểu</h4>
+                            <p>Lớp này chưa có lịch học nào được sắp xếp trong học kỳ 1.</p>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- MODAL: THÊM / SỬA SINH VIÊN                -->
+        <!-- ========================================== -->
+        <div class="modal-backdrop" 
+             x-show="modals.student" 
+             x-transition.opacity.duration.150ms 
+             @keydown.escape.window="closeStudentModal()" 
+             @click.self="closeStudentModal()">
+            <div class="modal-content" 
+                 x-show="modals.student" 
+                 x-transition:enter="transition ease-out duration-200" 
+                 x-transition:enter-start="opacity-0 transform scale-95" 
+                 x-transition:enter-end="opacity-100 transform scale-100">
+                <div class="modal-header">
+                    <h3 x-text="modalStudentTitle">Thêm Mới Sinh Viên</h3>
+                    <button class="btn-icon" @click="closeStudentModal()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <form @submit.prevent="saveStudent()">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Mã Sinh Viên (MSSV) *</label>
+                            <input type="text" class="input-control" placeholder="VD: SV21010" x-model="studentForm.studentCode" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Họ và Tên *</label>
+                            <input type="text" class="input-control" placeholder="Nguyễn Văn A" x-model="studentForm.fullName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Ngày Sinh *</label>
+                            <input type="date" class="input-control" x-model="studentForm.dob" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Giới Tính</label>
+                            <select class="input-control" x-model="studentForm.gender">
+                                <option value="MALE">Nam</option>
+                                <option value="FEMALE">Nữ</option>
+                                <option value="OTHER">Khác</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" class="input-control" placeholder="example@st.edu.vn" x-model="studentForm.email">
+                        </div>
+                        <div class="form-group">
+                            <label>Số Điện Thoại</label>
+                            <input type="tel" class="input-control" placeholder="0981234567" x-model="studentForm.phone">
+                        </div>
+                        <div class="form-group">
+                            <label>Địa Chỉ</label>
+                            <input type="text" class="input-control" placeholder="Hà Nội" x-model="studentForm.address">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="closeStudentModal()">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Lưu Sinh Viên</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- MODAL: NHẬP ĐIỂM                           -->
+        <!-- ========================================== -->
+        <div class="modal-backdrop" 
+             x-show="modals.grade" 
+             x-transition.opacity.duration.150ms 
+             @keydown.escape.window="closeGradeModal()" 
+             @click.self="closeGradeModal()">
+            <div class="modal-content" 
+                 x-show="modals.grade" 
+                 x-transition:enter="transition ease-out duration-200" 
+                 x-transition:enter-start="opacity-0 transform scale-95" 
+                 x-transition:enter-end="opacity-100 transform scale-100">
+                <div class="modal-header">
+                    <h3>Nhập Điểm Môn Học</h3>
+                    <button class="btn-icon" @click="closeGradeModal()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <form @submit.prevent="saveGrade()">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Sinh Viên</label>
+                            <input type="text" class="input-control" :value="gradeForm.studentName" disabled style="opacity: 0.8; font-weight: 600;">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div class="form-group">
+                                <label>Chuyên Cần (10%)</label>
+                                <input type="number" step="0.1" min="0" max="10" class="input-control" x-model.number="gradeForm.attendanceScore" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Bài Tập (20%)</label>
+                                <input type="number" step="0.1" min="0" max="10" class="input-control" x-model.number="gradeForm.assignmentScore" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Giữa Kỳ (20%)</label>
+                                <input type="number" step="0.1" min="0" max="10" class="input-control" x-model.number="gradeForm.midtermScore" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Cuối Kỳ (50%)</label>
+                                <input type="number" step="0.1" min="0" max="10" class="input-control" x-model.number="gradeForm.finalScore" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="closeGradeModal()">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Lưu & Tính Điểm</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- MODAL: CHẤM ĐIỂM RÈN LUYỆN                 -->
+        <!-- ========================================== -->
+        <div class="modal-backdrop" 
+             x-show="modals.conduct" 
+             x-transition.opacity.duration.150ms 
+             @keydown.escape.window="closeConductModal()" 
+             @click.self="closeConductModal()">
+            <div class="modal-content" 
+                 x-show="modals.conduct" 
+                 x-transition:enter="transition ease-out duration-200" 
+                 x-transition:enter-start="opacity-0 transform scale-95" 
+                 x-transition:enter-end="opacity-100 transform scale-100">
+                <div class="modal-header">
+                    <h3>Đánh Giá Điểm Rèn Luyện</h3>
+                    <button class="btn-icon" @click="closeConductModal()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <form @submit.prevent="saveConduct()">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Sinh Viên</label>
+                            <input type="text" class="input-control" :value="conductForm.studentName" disabled style="opacity: 0.8; font-weight: 600;">
+                        </div>
+                        <div class="form-group">
+                            <label>Điểm Đánh Giá (Thang 100) *</label>
+                            <input type="number" min="0" max="100" class="input-control" x-model.number="conductForm.score" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Nhận Xét của GVCN</label>
+                            <textarea class="input-control" rows="3" placeholder="Nhận xét ý thức, thái độ học tập..." x-model="conductForm.notes"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="closeConductModal()">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Lưu Điểm Rèn Luyện</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TOAST NOTIFICATIONS                        -->
+        <!-- ========================================== -->
+        <div class="toast-container">
+            <template x-for="t in toasts" :key="t.id">
+                <div class="toast" :class="t.type" x-transition:enter.duration.200ms x-transition:leave.duration.200ms>
+                    <span x-text="t.message"></span>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- APP SCRIPT -->
+    <script th:src="@{/js/app.js}"></script>
+</body>
+</html>
